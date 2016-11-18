@@ -101,7 +101,10 @@
 				    (cond [(= pos -1) 0]
 					  [(not (checkSegmentCrosses 
 						  (vector-ref randomPoints pointNum) 
-						  (vector-ref randomPoints pos) 
+						  (cons (- (cdr (vector-ref randomPoints pos))
+							   (cdr (vector-ref randomPoints pointNum))) 
+							(- (cdr (vector-ref randomPoints pos))
+							   (cdr (vector-ref randomPoints pointNum))))
 						  randomconnections))
 					   (set! connections (cons (cons pointNum pos) connectons))
 					   (connectionsForPoint! pointNum (- pos 1))]
