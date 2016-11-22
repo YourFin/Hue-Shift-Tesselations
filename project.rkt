@@ -120,18 +120,23 @@
 		       [else (vector-set! (vector-ref connectionsMatrix (caar (lst)) (cadr lst)) #t)
 			     (vector-set! (vector-ref connectionsMatrix (cadr (lst)) (caar lst)) #t)
 			     (initializeConnectionsMatrix! (car lst))]))]
-	     [findTrianglesBottom (lambda (pos vec findVal) 
-				    (cond [(= pos (vector-length vec)) null]
-					  [(vector-ref vec pos) (cons pos 
-								      (findTrianglesBottom 
-									(+ pos 1) 
-									vec 
-									findVal))]
-					  [else (findTrianglesBottom (+ pos 1) vec findVal)]))]
-	     [findTrianglesMiddle (lambda (pos findVal)
+	     [findTrianglesBottom (lambda (pos vec findVal lstSoFar) 
+				    (cond [(= pos (vector-length vec)) lstSoFar]
+					  [(and (vector-ref vec pos) 
+						(vector-ref 
+						  (vector-ref connectionsMatrix pos) 
+						  findVal)) 
+					   (findTrianglesBottom 
+					     (+ pos 1) 
+					     vec 
+					     findVal 
+					     (cons pos lstSoFar))]
+					  [else (findTrianglesBottom (+ pos 1) vec findVal lstSoFar)]))]
+	     [findTrianglesMiddle (lambda (pos vec findVal lstSoFar)
 				    (cond [(= pos (vector-length connectionsMatrix)) null]
-					  [(vector-ref 
-	     [findTrianglesTop (lambda (lst) (
+					  [(= pos findVal) (findTrianglesMiddle (+ pos 1) vec findVal lstSoFar)] ;make sure it doesn't go back
+					  [(and (vector-ref vec pos) 
+	     [findTrianglesTop (lambda (lstSoFar)
 	     )
       ;initialize vector
       (setRandomPoints numPoints)
