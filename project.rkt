@@ -121,8 +121,8 @@
   (lambda (n inputImage)
     (letrec ([pointTrys 10]
 	     [minDistance (sqr 3)]
-	     [tesselatedImage (image-variant baseImage (lambda (aa) aa))] ; to avoid messing with the original
-	     [finalImage (image-variant baseImage 
+	     [tesselatedImage (image-variant inputImage (lambda (aa) aa))] ; to avoid messing with the original
+	     [finalImage (image-variant inputImage 
 					(lambda (color) (hsv->irgb (hsv 
 								     (+ (irgb->hue color) 
 									(* (/ n 100) 360))
@@ -132,7 +132,7 @@
 				      [sixthHeight (max 50 (/ (image-height inputImage) 6))]
 				      [x1 (random (- (image-width inputImage) sixthWidth))]
 				      [y1 (random (- (image-height inputImage) sixthHeight))])
-				 (cons (cons x1 y2) 
+				 (cons (cons x1 y1) 
 				       (cons (+ x1 
 						sixthWidth 
 						(random (- (image-width inputImage) 
@@ -147,7 +147,7 @@
 				   (- (cdar tesselatedReigon) (cddr tesselatedReigon)))]
 
 	     ;random points section
-	     [numPoints (exact (sqrt (+ (car tesselatedSize) 
+	     [numPoints (floor (sqrt (+ (car tesselatedSize) 
 					(cdr tesselatedSize))))]
 	     [randomPoints (make-vector numPoints 0)]
 	     [setRandomPointsCheck (lambda (pos xx yy) 
@@ -173,9 +173,9 @@
 	     [twoDCrossProduct (lambda (pairA pairB) (- (* (car pairA) (cdr pairB)) (* (cdr pairA) (car pairB))))]
 	     [checkSegmentsDontIntersect ;http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect returns #t if they don't intersect
 	       (lambda (pp rr pointBA pointBB)
-		 (let ([qq pointBA]
-		       [ss (cons (- (cdr pointBB) (cdr pointBA)) (- (cdr pointBB) (cdr pointBA)))]
-		       [rrCrossSs (twoDCrossProduct rr ss)])
+		 (let* ([qq pointBA]
+			[ss (cons (- (cdr pointBB) (cdr pointBA)) (- (cdr pointBB) (cdr pointBA)))]
+			[rrCrossSs (twoDCrossProduct rr ss)])
 		   (or (= 0 rrCrossSs) 
 		       (let ([tt (/ (twoDCrossProduct (cons (- (car qq) (car pp)) (- (cdr qq) (cdr pp))) ss)
 				    rrCrossSs)]) ; let statemets like this to avoid uneccisary calculation, as this gets called a lot
@@ -183,29 +183,32 @@
 		       (let ([uu (/ (twoDCrossProduct (cons (- (car pp) (car qq)) (- (cdr pp) (cdr qq))) rr)
 				    (* -1 rrCrossSs))]) ; same as ss x rr
 			 (or (< uu 0) (> uu 1))))))]
-	     [checkSegmentCrosses (lambda (pp qq connectionsLeft) 
+
+	     [checkSegmentCrosses (lambda (pp rr connectionsLeft) 
 				    (cond [(null? connectionsLeft) #t]
 					  [(not (checkSegmentsDontIntersect 
 						  pp 
-						  qq 
+						  rr 
 						  (vector-ref randomPoints (caar (connectionsLeft)))
 						  (vector-ref randomPoints (cdar (connectionsLeft)))))
 					   #f]
-					  [else (checkSegmentCrosses pp qq (cdr connectionsLeft))]))]
+					  [else (checkSegmentCrosses pp rr (cdr connectionsLeft))]))]
 	     [connectionsForPoint! (lambda (pointNum pos)
-				    (cond [(= pos -1) 0]
-					  [(not (checkSegmentCrosses 
-						  (vector-ref randomPoints pointNum) 
-						  (cons (- (cdr (vector-ref randomPoints pos))
-							   (cdr (vector-ref randomPoints pointNum))) 
-							(- (cdr (vector-ref randomPoints pos))
-							   (cdr (vector-ref randomPoints pointNum))))
-						  randomconnections))
-					   (set! connections (cons (cons pointNum pos) connectons))
-					   (connectionsForPoint! pointNum (- pos 1))]
-					  [else (connectionsForPoint! pointNum (- pos 1))]))]
+				     (cond [(= pos -1) 0]
+					   [(not (checkSegmentCrosses 
+						   (vector-ref randomPoints pointNum) 
+						   (cons (- (car (vector-ref randomPoints pos))
+							    (car (vector-ref randomPoints pointNum))) 
+							 (- (cdr (vector-ref randomPoints pos))
+							    (cdr (vector-ref randomPoints pointNum))))
+						   connections))
+					    (set! connections (cons (cons pointNum pos) connectons))
+					    (connectionsForPoint! pointNum (- pos 1))]
+					   [else (connectionsForPoint! pointNum (- pos 1))]))]
 	     [findConnections! (lambda (pos) 
-				 (if (= pos numPoints) 0 (connectionsForPoint! pos pos)))]
+				 (when (> pos numPoints) 
+				   (connectionsForPoint! pos pos) 
+				   (findConnections! (+ pos 1))))]
 
 	     ;finding triangles
 	     [connectionsMatrix (make-vector numPoints (make-vector numPoints #f))]
@@ -227,8 +230,8 @@
 	     [triangleBotttom
 	       (lambda (row findVal) 
 		 (filter (and (lambda (num) (vector-ref (vector-ref connectionsMatrix num) findVal))
-			      (l-s < row)
-			 (vector->indexList (vector-ref connectionsMatrix row) 0 null))))]
+			      (l-s < row))
+			 (vector->indexList (vector-ref connectionsMatrix row) 0 null)))]
 	     [trianglesMiddle 
 	       (lambda (row findVal)
 		 (apply append 
@@ -291,7 +294,8 @@
 	     (setRandomPoints numPoints)
 	     (findConnections! 0)
 	     (initializeConnectionsMatrix! connections)
-	     ))
+	     (display triangles)
+	     )))
 
 
 
