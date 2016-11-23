@@ -151,7 +151,7 @@
 							(cdr tesselatedSize)))))]
 	     [randomPoints (make-vector numPoints 0)]
 	     [setRandomPointsCheck (lambda (pos xx yy) 
-				 (display "here")
+				     (display "here")
 				     (cond [(< pos 0) #t]
 					   ;check distance 
 					   [(> (+ (sqr (- (car (vector-ref randomPoints pos)) xx))
@@ -166,8 +166,8 @@
 				   (setRandomPoint pos (- try 1)))))]
 	     [setRandomPoints (lambda (pos) 
 				(cond [(< pos numPoints) (vector-set! randomPoints pos (setRandomPoint pos 10))
-						 (display tesselatedSize)
-						 (setRandomPoints (+ pos 1))]
+							 (display tesselatedSize)
+							 (setRandomPoints (+ pos 1))]
 				      [else 0]))]
 
 	     ;dealing with connecting points
@@ -176,12 +176,13 @@
 	     [checkSegmentsDontIntersect ;http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect returns #t if they don't intersect
 	       (lambda (pp rr pointBA pointBB)
 		 (let* ([qq pointBA]
-			[ss (cons (- (cdr pointBB) (cdr pointBA)) (- (cdr pointBB) (cdr pointBA)))]
+			[ss (cons (- (car pointBA) (car pointBB)) (- (cdr pointBA) (cdr pointBB)))]
 			[rrCrossSs (twoDCrossProduct rr ss)])
 		   (or (= 0 rrCrossSs) 
 		       (let ([tt (/ (twoDCrossProduct (cons (- (car qq) (car pp)) (- (cdr qq) (cdr pp))) ss)
 				    rrCrossSs)]) ; let statemets like this to avoid uneccisary calculation, as this gets called a lot
-			 (or (< tt 0) (> 1 tt)))
+			 (display tt)
+			 (or (< tt 0) (> tt 1)))
 		       (let ([uu (/ (twoDCrossProduct (cons (- (car pp) (car qq)) (- (cdr pp) (cdr qq))) rr)
 				    (* -1 rrCrossSs))]) ; same as ss x rr
 			 (or (< uu 0) (> uu 1))))))]
@@ -198,7 +199,7 @@
 	     [connectionsForPoint! (lambda (pointNum pos)
 				     (cond [(= pos -1) 0]
 					   [(not (checkSegmentCrosses 
-						   (vector-ref randomPoints pointNum) 
+						   (vector-ref randomPoints pos) 
 						   (cons (- (car (vector-ref randomPoints pos))
 							    (car (vector-ref randomPoints pointNum))) 
 							 (- (cdr (vector-ref randomPoints pos))
@@ -247,16 +248,18 @@
 	     )
 
 	     ;initialize vector
-	     (display tesselatedSize)
-	     (newline)
-	     (setRandomPoints 0)
-	     (display randomPoints)
-	     (newline)
-	     (findConnections! 0)
-	     (display connections)
-	     (initializeConnectionsMatrix! connections)
-	     (newline)
-	     (display (apply append (map trianglesTop (iota numPoints))))
+	     (display (checkSegmentsDontIntersect (cons 0 0) (cons 1 1) (cons 0 1) (cons 1 0)))
+	     (display (twoDCrossProduct (cons 0 -1) (cons 1 1)))
+;	     (display tesselatedSize)
+;	     (newline)
+;	     (setRandomPoints 0)
+;	     (display randomPoints)
+;	     (newline)
+;	     (findConnections! 0)
+;	     (display connections)
+;	     (initializeConnectionsMatrix! connections)
+;	     (newline)
+;	     (display (apply append (map trianglesTop (iota numPoints))))
 	     )))
 
 
