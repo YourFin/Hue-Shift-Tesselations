@@ -178,14 +178,13 @@
 		 (let* ([qq pointBA]
 			[ss (cons (- (car pointBA) (car pointBB)) (- (cdr pointBA) (cdr pointBB)))]
 			[rrCrossSs (twoDCrossProduct rr ss)])
-		   (or (= 0 rrCrossSs) 
-		       (let ([tt (/ (twoDCrossProduct (cons (- (car qq) (car pp)) (- (cdr qq) (cdr pp))) ss)
-				    rrCrossSs)]) ; let statemets like this to avoid uneccisary calculation, as this gets called a lot
-			 (display tt)
-			 (or (< tt 0) (> tt 1)))
-		       (let ([uu (/ (twoDCrossProduct (cons (- (car pp) (car qq)) (- (cdr pp) (cdr qq))) rr)
-				    (* -1 rrCrossSs))]) ; same as ss x rr
-			 (or (< uu 0) (> uu 1))))))]
+		   (not (or (= 0 rrCrossSs) 
+			    (let ([tt (/ (twoDCrossProduct (cons (- (car qq) (car pp)) (- (cdr qq) (cdr pp))) ss)
+					 rrCrossSs)]) ; let statemets like this to avoid uneccisary calculation, as this gets called a lot
+			      (or (>= tt 0) (<= tt 1)))
+			    (let ([uu (/ (twoDCrossProduct (cons (- (car pp) (car qq)) (- (cdr pp) (cdr qq))) rr)
+					 (* -1 rrCrossSs))]) ; same as ss x rr
+			      (or (>= uu 0) (<= uu 1)))))))]
 
 	     [checkSegmentCrosses (lambda (pp rr connectionsLeft) 
 				    (cond [(null? connectionsLeft) #t]
