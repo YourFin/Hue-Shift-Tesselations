@@ -116,6 +116,7 @@
 
 ;;;;;;;; end Code by Sam Rebelsky 
 
+(define connections null) ; I'm so sorry this is so messy
 
 (define triangleTesselationHueShift
   (lambda (n inputImage)
@@ -169,7 +170,6 @@
 				      [else 0]))]
 
 	     ;dealing with connecting points
-	     [connections null]
 	     [twoDCrossProduct (lambda (pairA pairB) (- (* (car pairA) (cdr pairB)) (* (cdr pairA) (car pairB))))]
 	     [checkSegmentsDontIntersect ;http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect returns #t if they don't intersect
 	       (lambda (pp rr pointBA pointBB)
@@ -242,54 +242,8 @@
 		 (apply append ; remove a layer of list
 			(map (compose (l-s cons row) (section trianglesMiddle <> row))
 			     (filter (l-s < row) (vector->indexList (vector-ref connectionsMatrix row) 0 null)))))]
-	     [triangles (apply append (map trianglesTop (iota numPoints)))]
-;	     [findTrianglesBottom (lambda (pos vec findVal lstSoFar) 
-;				    (cond [(= pos (vector-length vec)) lstSoFar]
-;					  [(and (vector-ref vec pos) 
-;						(vector-ref 
-;						  (vector-ref connectionsMatrix pos) 
-;						  findVal)) 
-;					   (findTrianglesBottom 
-;					     (+ pos 1) 
-;					     vec 
-;					     findVal 
-;					     (cons pos lstSoFar))]
-;					  [else (findTrianglesBottom (+ pos 1) vec findVal lstSoFar)]))]
-;	     [findTrianglesMiddle 
-;	       (lambda (pos vec findVal lstSoFar)
-;		 (cond 
-;		   [(= pos (vector-length connectionsMatrix)) lstSoFar]
-;		   [(or (not (vector-ref vec pos)) (= pos findVal)) 
-;		    (findTrianglesMiddle (+ pos 1) vec findVal lstSoFar)] 
-;		   ;make sure it doesn't go back across the original connection
-;		   ;or if the value at that position is false
-;		   [else
-;		     (let ([pointsConnectedToFindVal 
-;			     (findTrianglesBottom 
-;			       (+ pos 1) ; dont need to check the same point
-;			       (vector-ref connectionsMatrix pos) 
-;			       findVal 
-;			       null)])
-;		       (if (null? pointsConnectedToFindVal)
-;			 (findTrianglesMiddle 
-;			   (+ pos 1) 
-;			   vec 
-;			   findVal 
-;			   lstSoFar) ; same as the or not line in the above cond; couldn't figure out a clean way of doing this without unnecissary calls to trianglebotttom.
-;			 (findTrianglesMiddle 
-;			   (+ pos 1) 
-;			   vec 
-;			   findVal
-;			   (append ; the list of (bottom and pos) to lstSoFar
-;			     (map (l-s list pos) pointsConnectedToFindVal) 
-;			     lstSoFar))))]))]
-;	     [findTrianglesTop 
-;	       (lambda (pos lstSoFar) 
-;		 (
-;		 (cond
-;		   [(= pos (vector-length connectionsMatrix)) lstSoFar]
-;		   [()]]
-		   )
+	     [triangles (apply append (map trianglesTop (iota numPoints)))])
+
 	     ;initialize vector
 	     (setRandomPoints numPoints)
 	     (findConnections! 0)
