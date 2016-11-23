@@ -143,15 +143,16 @@
 						(random (- (image-height inputImage) 
 							   y1 
 							   sixthHeight))))))]
-	     [tesselatedSize (cons (- (caar tesselatedReigon) (cdar tesselatedReigon))
-				   (- (cdar tesselatedReigon) (cddr tesselatedReigon)))]
+	     [tesselatedSize (cons (- (cadr tesselatedReigon) (caar tesselatedReigon))
+				   (- (cddr tesselatedReigon) (cdar tesselatedReigon)))]
 
 	     ;random points section
 	     [numPoints (inexact->exact (floor (sqrt (+ (car tesselatedSize) 
 							(cdr tesselatedSize)))))]
 	     [randomPoints (make-vector numPoints 0)]
 	     [setRandomPointsCheck (lambda (pos xx yy) 
-				     (cond [(= pos 0) #t]
+				 (display "here")
+				     (cond [(< pos 0) #t]
 					   ;check distance 
 					   [(> (+ (sqr (- (car (vector-ref randomPoints pos)) xx))
 						  (sqr (- (cdr (vector-ref randomPoints pos)) yy)))
@@ -160,13 +161,13 @@
 	     [setRandomPoint (lambda (pos try)
 			       (let ([xx (random (car tesselatedSize))]
 				     [yy (random (cdr tesselatedSize))])
-				 (if (or (= try 0) (setRandomPointsCheck xx yy)) 
+				 (if (or (= try 0) (setRandomPointsCheck (- pos 1) xx yy)) 
 				   (cons xx yy)
 				   (setRandomPoint pos (- try 1)))))]
 	     [setRandomPoints (lambda (pos) 
-				(cond [(< 0 pos) (vector-set! randomPoints pos (setRandomPoint (- pos 1) 10))
+				(cond [(< pos numPoints) (vector-set! randomPoints pos (setRandomPoint pos 10))
 						 (display tesselatedSize)
-						 (setRandomPoints (- pos 1))]
+						 (setRandomPoints (+ pos 1))]
 				      [else 0]))]
 
 	     ;dealing with connecting points
@@ -248,13 +249,13 @@
 	     ;initialize vector
 	     (display tesselatedSize)
 	     (newline)
-	     (setRandomPoints numPoints)
-	     (display numPoints)
+	     (setRandomPoints 0)
+	     (display randomPoints)
 	     (newline)
 	     (findConnections! 0)
-	     (display "2")
+	     (display connections)
 	     (initializeConnectionsMatrix! connections)
-	     (display "3")
+	     (newline)
 	     (display (apply append (map trianglesTop (iota numPoints))))
 	     )))
 
