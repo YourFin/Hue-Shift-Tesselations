@@ -151,7 +151,6 @@
 							(cdr tesselatedSize)))))]
 	     [randomPoints (make-vector numPoints 0)]
 	     [setRandomPointsCheck (lambda (pos xx yy) 
-				     (display "here")
 				     (cond [(< pos 0) #t]
 					   ;check distance 
 					   [(> (+ (sqr (- (car (vector-ref randomPoints pos)) xx))
@@ -166,7 +165,6 @@
 				   (setRandomPoint pos (- try 1)))))]
 	     [setRandomPoints (lambda (pos) 
 				(cond [(< pos numPoints) (vector-set! randomPoints pos (setRandomPoint pos 10))
-							 (display tesselatedSize)
 							 (setRandomPoints (+ pos 1))]
 				      [else 0]))]
 
@@ -176,49 +174,73 @@
 	     [checkSegmentsDontIntersect ;http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect returns #t if they don't intersect
 	       (lambda (pp rr pointBA pointBB)
 		 (let* ([qq pointBA]
-			[ss (cons (- (car pointBA) (car pointBB)) (- (cdr pointBA) (cdr pointBB)))]
+			[ss (cons 
+			      (- (car pointBA) 
+				 (car pointBB)) 
+			      (- (cdr pointBA) 
+				 (cdr pointBB)))]
 			[rrCrossSs (twoDCrossProduct rr ss)])
-		   (not (or (= 0 rrCrossSs) 
-			    (let ([tt (/ (twoDCrossProduct (cons (- (car qq) (car pp)) (- (cdr qq) (cdr pp))) ss)
-					 rrCrossSs)]) ; let statemets like this to avoid uneccisary calculation, as this gets called a lot
-			      (or (>= tt 0) (<= tt 1)))
-			    (let ([uu (/ (twoDCrossProduct (cons (- (car pp) (car qq)) (- (cdr pp) (cdr qq))) rr)
-					 (* -1 rrCrossSs))]) ; same as ss x rr
-			      (or (>= uu 0) (<= uu 1)))))))]
+		   (or (= 0 rrCrossSs) (and
+		       (let ([tt (/ (twoDCrossProduct (cons (- (car qq) (car pp)) (- (cdr qq) (cdr pp))) ss)
+				    rrCrossSs)]) ; let statemets like this to avoid uneccisary calculation, as this gets called a lot
+			 (not (or (> tt 1) (< tt 0))))
+		       (let ([uu (/ (twoDCrossProduct (cons (- (car pp) (car qq)) (- (cdr pp) (cdr qq))) rr)
+				    (* -1 rrCrossSs))]) ; same as ss x rr
+			 (not (or (> uu 1) (< uu 0))))))))]
 
 	     [checkSegmentCrosses (lambda (pp rr connectionsLeft) 
-				    (cond [(null? connectionsLeft) #t]
+				    (cond [(null? connectionsLeft) (display "true") #t]
 					  [(not (checkSegmentsDontIntersect 
 						  pp 
 						  rr 
-						  (vector-ref randomPoints (caar (connectionsLeft)))
-						  (vector-ref randomPoints (cdar (connectionsLeft)))))
+						  (vector-ref randomPoints (car (car connectionsLeft)))
+						  (vector-ref randomPoints (cdr (car connectionsLeft)))))
 					   #f]
-					  [else (checkSegmentCrosses pp rr (cdr connectionsLeft))]))]
-	     [connectionsForPoint! (lambda (pointNum pos)
-				     (cond [(= pos -1) 0]
-					   [(not (checkSegmentCrosses 
-						   (vector-ref randomPoints pos) 
-						   (cons (- (car (vector-ref randomPoints pos))
-							    (car (vector-ref randomPoints pointNum))) 
-							 (- (cdr (vector-ref randomPoints pos))
-							    (cdr (vector-ref randomPoints pointNum))))
-						   connections))
-					    (set! connections (cons (cons pointNum pos) connections))
-					    (connectionsForPoint! pointNum (- pos 1))]
-					   [else (connectionsForPoint! pointNum (- pos 1))]))]
-	     [findConnections! (lambda (pos) 
-				 (when (> pos numPoints) 
-				   (connectionsForPoint! pos pos) 
-				   (findConnections! (+ pos 1))))]
+					  [else 
+					    (checkSegmentCrosses pp rr (cdr connectionsLeft))]))]
+	     [connectionsForPoint 
+	       (lambda (pointNum pos lstSoFar formerList)
+		 (cond [(= pos -1) lstSoFar]
+		       [(checkSegmentCrosses 
+			  (vector-ref randomPoints pos) 
+			  (cons (- (car (vector-ref randomPoints pos))
+				   (car (vector-ref randomPoints pointNum))) 
+				(- (cdr (vector-ref randomPoints pos))
+				   (cdr (vector-ref randomPoints pointNum))))
+			  (filter (lambda (point) ; dump segments that share an endpoint
+				    (let ([check (lambda (num) 
+						   (not (or (= num pos) (= num pointNum))))])
+				      (and (check (car point)) (check (cdr point)))))
+					  formerList))
+				    (connectionsForPoint 
+					      pointNum 
+					      (- pos 1) 
+					      (cons (cons pointNum pos) lstSoFar)
+					      formerList)]
+					   [else (display "hello") (connectionsForPoint
+						   pointNum 
+						   (- pos 1) 
+						   lstSoFar
+						   formerList)]))]
+	     [findConnections (lambda (pos lstSoFar) 
+				(if (< pos numPoints) 
+				  (findConnections 
+				    (+ pos 1) 
+				    (append (connectionsForPoint 
+					      pos 
+					      (- pos 1) 
+					      null 
+					      lstSoFar) 
+					    lstSoFar))
+				  lstSoFar))]
 
 	     ;finding triangles
 	     [connectionsMatrix (make-vector numPoints (make-vector numPoints #f))]
 	     [initializeConnectionsMatrix! 
 	       (lambda (lst) 
 		 (cond [(null? lst) 0]
-		       [else (vector-set! (vector-ref connectionsMatrix (caar (lst)) (cadr lst)) #t)
-			     (vector-set! (vector-ref connectionsMatrix (cadr (lst)) (caar lst)) #t)
+		       [else (vector-set! (vector-ref connectionsMatrix (caar lst) (cdar lst)) #t)
+			     (vector-set! (vector-ref connectionsMatrix (cdar lst) (caar lst)) #t)
 			     (initializeConnectionsMatrix! (car lst))]))]
 	     [vector->indexList 
 	       (lambda (vec pos lstSoFar)
@@ -247,17 +269,21 @@
 	     )
 
 	     ;initialize vector
-	     (display (checkSegmentsDontIntersect (cons 0 0) (cons 1 1) (cons 0 1) (cons 1 0)))
-	     (display (twoDCrossProduct (cons 0 -1) (cons 1 1)))
-;	     (display tesselatedSize)
-;	     (newline)
-;	     (setRandomPoints 0)
-;	     (display randomPoints)
-;	     (newline)
-;	     (findConnections! 0)
-;	     (display connections)
+;	     (display (checkSegmentsDontIntersect (cons 0 0) (cons 1 1) (cons 1 0) (cons 0 1)))
+;	     (set! randomPoints (vector (cons 1 0) (cons 0 1) (cons 0 2))) 
+;	     (display (checkSegmentCrosses (cons 0 0) (cons 5 5) (list (cons 1 2))))
+;                    (display (checkSegmentsDontIntersect (cons 0 0) (cons 5 5) (vector-ref randomPoints (car (car (list (cons 2 1)))))
+;		     (vector-ref randomPoints (cdr (car (list (cons 2 1)))))))
+;		    (newline)
+;		    (display (checkSegmentsDontIntersect (cons 0 0) (cons 5 5) (cons 0 1) (cons 0 2)))
+	     (display tesselatedSize)
+	     (newline)
+	     (setRandomPoints 0)
+	     (display randomPoints)
+	     (newline)
+	     (display (findConnections 0 null))
 ;	     (initializeConnectionsMatrix! connections)
-;	     (newline)
+	     (newline)
 ;	     (display (apply append (map trianglesTop (iota numPoints))))
 	     )))
 
