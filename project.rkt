@@ -27,15 +27,15 @@
 ;;;   output, an image
 ;;; Preconditions:
 ;;;   0 <= n < 1000
-;;;   width > 50
-;;;   height > 50
+;;;   width > 300
+;;;   height > 300
 ;;; Postconditions:
 ;;;   
 
 (define image-series 
   (lambda (n width height) 
     (let
-      ([base-image (image-load (string-append (find-system-path 'origin-dir) 
+      ([base-image (image-load (string-append (path->string (find-system-path 'orig-dir))
 					      (number->string (quotient n 100))
 					      ".jpg"))])
     (random-seed (+ 
@@ -43,7 +43,8 @@
 		   (irgb-blue (image-get-pixel base-image 0 0))
 		   (irgb-green (image-get-pixel base-image 0 0))
 		   n))
-    (triangleTesselationHueShift (modulo n 100) (base-image)))))
+    (gimp-image-scale base-image width height)
+    (triangleTesselationHueShift (modulo n 100) base-image))))
 
 
 ;;;;;;; The following was written by Sam Rebelsky for this project, all credit to him for this:
@@ -116,21 +117,19 @@
 
 ;;;;;;;; end Code by Sam Rebelsky 
 
-(define connections null) ; I'm so sorry this is so messy
-
 (define triangleTesselationHueShift
   (lambda (n inputImage)
     (letrec ([pointTrys 10]
 	     [minDistance (sqr 3)]
 	     [tesselatedImage (image-variant inputImage (lambda (aa) aa))] ; to avoid messing with the original
-	     [finalImage (image-variant inputImage 
-					(lambda (color) (hsv->irgb (hsv 
-								     (+ (irgb->hue color) 
-									(* (/ n 100) 360))
-								     (irgb->saturation color)
-								     (irgb->value color)))))]
-	     [tesselatedReigon (let* ([sixthWidth (max 50 (/ (image-width inputImage) 6))]
-				      [sixthHeight (max 50 (/ (image-height inputImage) 6))]
+;	     [finalImage (image-variant inputImage 
+;					(lambda (color) (hsv->irgb (hsv 
+;								     (+ (irgb->hue color) 
+;									(* (/ n 100) 360))
+;								     (irgb->saturation color)
+;								     (irgb->value color)))))]
+	     [tesselatedReigon (let* ([sixthWidth (max 50 (floor (/ (image-width inputImage) 6)))]
+				      [sixthHeight (max 50 (floor (/ (image-height inputImage) 6)))]
 				      [x1 (random (- (image-width inputImage) sixthWidth))]
 				      [y1 (random (- (image-height inputImage) sixthHeight))])
 				 (cons (cons x1 y1) 
@@ -148,8 +147,8 @@
 				   (- (cdar tesselatedReigon) (cddr tesselatedReigon)))]
 
 	     ;random points section
-	     [numPoints (floor (sqrt (+ (car tesselatedSize) 
-					(cdr tesselatedSize))))]
+	     [numPoints (inexact->exact (floor (sqrt (+ (car tesselatedSize) 
+							(cdr tesselatedSize)))))]
 	     [randomPoints (make-vector numPoints 0)]
 	     [setRandomPointsCheck (lambda (pos xx yy) 
 				     (cond [(= pos 0) #t]
@@ -165,11 +164,13 @@
 				   (cons xx yy)
 				   (setRandomPoint pos (- try 1)))))]
 	     [setRandomPoints (lambda (pos) 
-				(cond [(< 0 pos) (vector-set! randomPoints pos (setRandomPoint (- pos 1)))
+				(cond [(< 0 pos) (vector-set! randomPoints pos (setRandomPoint (- pos 1) 10))
+						 (display tesselatedSize)
 						 (setRandomPoints (- pos 1))]
 				      [else 0]))]
 
 	     ;dealing with connecting points
+	     [connections null]
 	     [twoDCrossProduct (lambda (pairA pairB) (- (* (car pairA) (cdr pairB)) (* (cdr pairA) (car pairB))))]
 	     [checkSegmentsDontIntersect ;http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect returns #t if they don't intersect
 	       (lambda (pp rr pointBA pointBB)
@@ -202,7 +203,7 @@
 							 (- (cdr (vector-ref randomPoints pos))
 							    (cdr (vector-ref randomPoints pointNum))))
 						   connections))
-					    (set! connections (cons (cons pointNum pos) connectons))
+					    (set! connections (cons (cons pointNum pos) connections))
 					    (connectionsForPoint! pointNum (- pos 1))]
 					   [else (connectionsForPoint! pointNum (- pos 1))]))]
 	     [findConnections! (lambda (pos) 
@@ -227,7 +228,7 @@
 	     [iotaCMleft
 	       (lambda (pos)
 		 (map (l-s + pos) (iota (- (vector-length connectionsMatrix) pos))))]
-	     [triangleBotttom
+	     [trianglesBottom
 	       (lambda (row findVal) 
 		 (filter (and (lambda (num) (vector-ref (vector-ref connectionsMatrix num) findVal))
 			      (l-s < row))
@@ -242,13 +243,19 @@
 		 (apply append ; remove a layer of list
 			(map (compose (l-s cons row) (section trianglesMiddle <> row))
 			     (filter (l-s < row) (vector->indexList (vector-ref connectionsMatrix row) 0 null)))))]
-	     [triangles (apply append (map trianglesTop (iota numPoints)))])
+	     )
 
 	     ;initialize vector
+	     (display tesselatedSize)
+	     (newline)
 	     (setRandomPoints numPoints)
+	     (display numPoints)
+	     (newline)
 	     (findConnections! 0)
+	     (display "2")
 	     (initializeConnectionsMatrix! connections)
-	     (display triangles)
+	     (display "3")
+	     (display (apply append (map trianglesTop (iota numPoints))))
 	     )))
 
 
