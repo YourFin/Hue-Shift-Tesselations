@@ -9,6 +9,29 @@
 
 ; set path to dir run from, any path works though
 ; swap out for 'exec-file for path of the executable
+
+
+;;; Procedure:
+;;;   image-series
+;;; Parameters:
+;;;   n, an integer
+;;;   width, an integer
+;;;   height, an integer
+;;; Purpose:
+;;;   to produce a series of different, repeatable images for 1000 different values of n,
+;;;   of width $width and height $height
+;;;      each image will be a hueshifted version of a scenic landscape image, hueshifted
+;;;      with a non-hueshifted area of random tesselated triangles the color of the 
+;;;      non hue-shifted image in that area
+;;; Produces:
+;;;   output, an image
+;;; Preconditions:
+;;;   0 <= n < 1000
+;;;   width > 50
+;;;   height > 50
+;;; Postconditions:
+;;;   
+
 (define image-series 
   (lambda (n width height) 
     (let
@@ -21,6 +44,78 @@
 		   (irgb-green (image-get-pixel base-image 0 0))
 		   n))
     (triangleTesselationHueShift (modulo n 100) (base-image)))))
+
+
+;;;;;;; The following was written by Sam Rebelsky for this project, all credit to him for this:
+
+;;; Procedure:
+;;;   image-info
+;;; Parameters:
+;;;   image, an image id
+;;; Purpose:
+;;;   Compute some basic info on the image
+;;; Produces:
+;;;   info, a four element list containing
+;;;     * count of non-white pixels
+;;;     * total of red components of nwps
+;;;     * total of green components of nwps
+;;;     * total of blue components of nwps
+(define image-info
+  (lambda (image)
+    (let ([count 0]
+          [sum-red 0]
+          [sum-green 0]
+          [sum-blue 0]
+          [white (irgb 255 255 255)])
+      (image-transform! image (lambda (color)
+                                (when (not (eq? color white))
+                                  (set! count (+ count 1))
+                                  (set! sum-red (+ sum-red (irgb-red color)))
+                                  (set! sum-green (+ sum-green (irgb-green color)))
+                                  (set! sum-blue (+ sum-blue (irgb-blue color))))
+                                color))
+      (list count sum-red sum-green sum-blue))))
+
+;;; Procedure:
+;;;   selection->image
+;;; Parameters:
+;;;   image, an image
+;;; Purpose:
+;;;   Create a new image containing the selected part of image.
+;;; Produces:
+;;;   new-image, an image
+(define selection->image
+  (lambda (image)
+    (let* ([bounds (gimp-selection-bounds image)]
+           [x1 (cadr bounds)]
+           [y1 (caddr bounds)]
+           [x2 (list-ref bounds 3)]
+           [y2 (list-ref bounds 4)]
+           [width (- x2 x1)]
+           [height (- y2 y1)]
+           [result (image-new width height)])
+      (gimp-edit-copy (image-get-layer image))
+      (gimp-edit-paste (image-get-layer result) 1)
+      (gimp-image-flatten result)
+      result)))
+
+;;; Procedure:
+;;;   average-nwp
+;;; Parameters:
+;;;   image, an image
+;;; Purpose:
+;;;   Computes the average non-white pixel color in image
+;;; Produces:
+;;;   ave, a color
+(define average-nwp
+  (lambda (image)
+    (let ([data (image-info image)])
+      (irgb (/ (cadr data) (car data))
+            (/ (caddr data) (car data))
+            (/ (cadddr data) (car data))))))
+
+;;;;;;;; end Code by Sam Rebelsky 
+
 
 (define triangleTesselationHueShift
   (lambda (n inputImage)
@@ -120,29 +215,83 @@
 		       [else (vector-set! (vector-ref connectionsMatrix (caar (lst)) (cadr lst)) #t)
 			     (vector-set! (vector-ref connectionsMatrix (cadr (lst)) (caar lst)) #t)
 			     (initializeConnectionsMatrix! (car lst))]))]
-	     [findTrianglesBottom (lambda (pos vec findVal lstSoFar) 
-				    (cond [(= pos (vector-length vec)) lstSoFar]
-					  [(and (vector-ref vec pos) 
-						(vector-ref 
-						  (vector-ref connectionsMatrix pos) 
-						  findVal)) 
-					   (findTrianglesBottom 
-					     (+ pos 1) 
-					     vec 
-					     findVal 
-					     (cons pos lstSoFar))]
-					  [else (findTrianglesBottom (+ pos 1) vec findVal lstSoFar)]))]
-	     [findTrianglesMiddle (lambda (pos vec findVal lstSoFar)
-				    (cond [(= pos (vector-length connectionsMatrix)) null]
-					  [(= pos findVal) (findTrianglesMiddle (+ pos 1) vec findVal lstSoFar)] ;make sure it doesn't go back
-					  [(and (vector-ref vec pos) 
-	     [findTrianglesTop (lambda (lstSoFar)
-	     )
-      ;initialize vector
-      (setRandomPoints numPoints)
-      (findConnections! 0)
-      (initializeConnectionsMatrix! connections)
-    ))
+	     [vector->indexList 
+	       (lambda (vec pos lstSoFar)
+		 (cond [(= (vector-length vec) pos) lstSoFar]
+		       [(vector-ref vec pos) 
+			(vector->indexList vec (+ pos 1) (cons pos lstSoFar))]
+		       [else (vector->indexList vec (+ pos 1) lstSoFar)]))]
+	     [iotaCMleft
+	       (lambda (pos)
+		 (map (l-s + pos) (iota (- (vector-length connectionsMatrix) pos))))]
+	     [triangleBotttom
+	       (lambda (row findVal) 
+		 (filter (and (lambda (num) (vector-ref (vector-ref connectionsMatrix num) findVal))
+			      (l-s < row)
+			 (vector->indexList (vector-ref connectionsMatrix row) 0 null))))]
+	     [trianglesMiddle 
+	       (lambda (row findVal)
+		 (apply append 
+			(map (compose (l-s cons row) (section trianglesBottom <> findVal)) 
+			     (filter (l-s < findVal) (vector->indexList (vector-ref connectionsMatrix row) 0 null)))))]
+	     [trianglesTop 
+	       (lambda (row)
+		 (apply append ; remove a layer of list
+			(map (compose (l-s cons row) (section trianglesMiddle <> row))
+			     (filter (l-s < row) (vector->indexList (vector-ref connectionsMatrix row) 0 null)))))]
+	     [triangles (apply append (map trianglesTop (iota numPoints)))]
+;	     [findTrianglesBottom (lambda (pos vec findVal lstSoFar) 
+;				    (cond [(= pos (vector-length vec)) lstSoFar]
+;					  [(and (vector-ref vec pos) 
+;						(vector-ref 
+;						  (vector-ref connectionsMatrix pos) 
+;						  findVal)) 
+;					   (findTrianglesBottom 
+;					     (+ pos 1) 
+;					     vec 
+;					     findVal 
+;					     (cons pos lstSoFar))]
+;					  [else (findTrianglesBottom (+ pos 1) vec findVal lstSoFar)]))]
+;	     [findTrianglesMiddle 
+;	       (lambda (pos vec findVal lstSoFar)
+;		 (cond 
+;		   [(= pos (vector-length connectionsMatrix)) lstSoFar]
+;		   [(or (not (vector-ref vec pos)) (= pos findVal)) 
+;		    (findTrianglesMiddle (+ pos 1) vec findVal lstSoFar)] 
+;		   ;make sure it doesn't go back across the original connection
+;		   ;or if the value at that position is false
+;		   [else
+;		     (let ([pointsConnectedToFindVal 
+;			     (findTrianglesBottom 
+;			       (+ pos 1) ; dont need to check the same point
+;			       (vector-ref connectionsMatrix pos) 
+;			       findVal 
+;			       null)])
+;		       (if (null? pointsConnectedToFindVal)
+;			 (findTrianglesMiddle 
+;			   (+ pos 1) 
+;			   vec 
+;			   findVal 
+;			   lstSoFar) ; same as the or not line in the above cond; couldn't figure out a clean way of doing this without unnecissary calls to trianglebotttom.
+;			 (findTrianglesMiddle 
+;			   (+ pos 1) 
+;			   vec 
+;			   findVal
+;			   (append ; the list of (bottom and pos) to lstSoFar
+;			     (map (l-s list pos) pointsConnectedToFindVal) 
+;			     lstSoFar))))]))]
+;	     [findTrianglesTop 
+;	       (lambda (pos lstSoFar) 
+;		 (
+;		 (cond
+;		   [(= pos (vector-length connectionsMatrix)) lstSoFar]
+;		   [()]]
+		   )
+	     ;initialize vector
+	     (setRandomPoints numPoints)
+	     (findConnections! 0)
+	     (initializeConnectionsMatrix! connections)
+	     ))
 
 
 
