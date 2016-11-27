@@ -181,8 +181,24 @@
 		       [by [cdr point2]])
 		   (- (* ax by) (* bx ay))))]
 
+	     ;https://martin-thoma.com/how-to-check-if-two-line-segments-intersect/
+	     [boundingRectanglesIntersect?
+	       (lambda (pointAA pointAB pointBA pointBB)
+		 (let ([xA1 (min (car pointAA) (car pointAB))]
+		       [yA1 (min (cdr pointAA) (cdr pointAB))]
+		       [xA2 (max (car pointAA) (car pointAB))]
+		       [yA2 (max (cdr pointAA) (cdr pointAB))]
+		       [xB1 (min (car pointBA) (car pointBB))]
+		       [yB1 (min (cdr pointBA) (cdr pointBB))]
+		       [xB2 (max (car pointBA) (car pointBB))]
+		       [yB2 (max (cdr pointBA) (cdr pointBB))])
+		   (and (<= xA1 xB2)
+			(>= xA2 xB1)
+			(<= yA1 yB2)
+			(>= yA2 yB1))))]
 	     [segmentsIntersect? 
 	       (lambda (pointAA pointAB pointBA pointBB)
+		 (or 
 
 	     [checkSegmentCrosses (lambda (point1 point2 connectionsLeft) 
 				    (cond [(null? connectionsLeft) (display "true") #t]
