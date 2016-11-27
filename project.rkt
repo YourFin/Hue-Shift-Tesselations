@@ -171,57 +171,62 @@
 	     ;dealing with connecting points
 	     [connections null]
 	     [twoDCrossProduct (lambda (pairA pairB) (- (* (car pairA) (cdr pairB)) (* (cdr pairA) (car pairB))))]
-	     [checkSegmentsDontIntersect ;http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect returns #t if they don't intersect
-	       (lambda (pp rr pointBA pointBB)
-		 (let* ([qq pointBA]
-			[ss (cons 
-			      (- (car pointBA) 
-				 (car pointBB)) 
-			      (- (cdr pointBA) 
-				 (cdr pointBB)))]
-			[rrCrossSs (twoDCrossProduct rr ss)])
-		   (or (= 0 rrCrossSs) (and
-		       (let ([tt (/ (twoDCrossProduct (cons (- (car qq) (car pp)) (- (cdr qq) (cdr pp))) ss)
-				    rrCrossSs)]) ; let statemets like this to avoid uneccisary calculation, as this gets called a lot
-			 (not (or (> tt 1) (< tt 0))))
-		       (let ([uu (/ (twoDCrossProduct (cons (- (car pp) (car qq)) (- (cdr pp) (cdr qq))) rr)
-				    (* -1 rrCrossSs))]) ; same as ss x rr
-			 (not (or (> uu 1) (< uu 0))))))))]
 
-	     [checkSegmentCrosses (lambda (pp rr connectionsLeft) 
+	     ;credit to Titus Klingte for the following: 
+	     [cross-product
+	       (lambda (point1 point2)
+		 (let ([ax (car point1)]
+		       [ay (cdr point1)]
+		       [bx (car point2)]
+		       [by [cdr point2]])
+		   (- (* ax by) (* bx ay))))]
+
+	     [segmentsIntersect? 
+	       (lambda (pointAA pointAB pointBA pointBB)
+
+	     [checkSegmentCrosses (lambda (point1 point2 connectionsLeft) 
 				    (cond [(null? connectionsLeft) (display "true") #t]
-					  [(not (checkSegmentsDontIntersect 
-						  pp 
-						  rr 
-						  (vector-ref randomPoints (car (car connectionsLeft)))
-						  (vector-ref randomPoints (cdr (car connectionsLeft)))))
+					  [(segmentsIntersect? point1 
+							       point2 
+							       (vector-ref (caar connectionsLeft)) 
+							       (vector-ref (cdar connectionsLeft)))
 					   #f]
 					  [else 
-					    (checkSegmentCrosses pp rr (cdr connectionsLeft))]))]
+					    (checkSegmentCrosses point1 point2 (cdr connectionsLeft))]))]
 	     [connectionsForPoint 
 	       (lambda (pointNum pos lstSoFar formerList)
-		 (cond [(= pos -1) lstSoFar]
-		       [(checkSegmentCrosses 
-			  (vector-ref randomPoints pos) 
-			  (cons (- (car (vector-ref randomPoints pos))
-				   (car (vector-ref randomPoints pointNum))) 
-				(- (cdr (vector-ref randomPoints pos))
-				   (cdr (vector-ref randomPoints pointNum))))
-			  (filter (lambda (point) ; dump segments that share an endpoint
+		 (display pointNum)
+		 (display " ")
+		 (display pos)
+		 (newline)
+		 (display (filter (lambda (point) ; dump segments that share an endpoint
 				    (let ([check (lambda (num) 
 						   (not (or (= num pos) (= num pointNum))))])
 				      (and (check (car point)) (check (cdr point)))))
 					  formerList))
-				    (connectionsForPoint 
-					      pointNum 
-					      (- pos 1) 
-					      (cons (cons pointNum pos) lstSoFar)
-					      formerList)]
-					   [else (display "hello") (connectionsForPoint
-						   pointNum 
-						   (- pos 1) 
-						   lstSoFar
-						   formerList)]))]
+		 (newline)
+		 (display formerList)
+		 (newline)
+		 (newline)
+		 (cond [(= pos -1) lstSoFar]
+		       [(checkSegmentCrosses 
+			  (vector-ref randomPoints pos) 
+			  (vector-ref randomPoints pointNum)
+			  (filter (lambda (point) ; dump segments that share an endpoint
+				    (let ([check (lambda (num) 
+						   (not (or (= num pos) (= num pointNum))))])
+				      (and (check (car point)) (check (cdr point)))))
+				  formerList))
+			(connectionsForPoint 
+			  pointNum 
+			  (- pos 1) 
+			  (cons (cons pointNum pos) lstSoFar)
+			  formerList)]
+		       [else (connectionsForPoint
+			       pointNum 
+			       (- pos 1) 
+			       lstSoFar
+			       formerList)]))]
 	     [findConnections (lambda (pos lstSoFar) 
 				(if (< pos numPoints) 
 				  (findConnections 
@@ -281,7 +286,12 @@
 	     (setRandomPoints 0)
 	     (display randomPoints)
 	     (newline)
-	     (display (findConnections 0 null))
+	     (context-set-fgcolor! "black")
+	     (context-set-brush! "2. Hardness 100" 2)
+	     (let ([connections (findConnections 0 null)])
+	       (map 
+	     
+	     
 ;	     (initializeConnectionsMatrix! connections)
 	     (newline)
 ;	     (display (apply append (map trianglesTop (iota numPoints))))
