@@ -222,10 +222,7 @@
 		(lambda (pointAA pointAB pointBA pointBB)
 		  (and (boundingRectanglesIntersect? (pointAA pointAB pointBA pointBB))
 		       (lineSegmentCrossesLine? (cons pointAA pointAB) (cons pointBA pointBB))
-		       (lineSegmentCrossesLine? (cons pointBA pointBB) (cons pointAA pointAB))
-
-
-
+		       (lineSegmentCrossesLine? (cons pointBA pointBB) (cons pointAA pointAB))))]
 
 	     [checkSegmentCrosses (lambda (point1 point2 connectionsLeft) 
 				    (cond [(null? connectionsLeft) (display "true") #t]
