@@ -69,7 +69,7 @@
           [sum-green 0]
           [sum-blue 0]
           [white (irgb 255 255 255)])
-      (image-transform! image (lambda (color)
+      (image-transform! image (lambda (color) ; essentially image-compute
                                 (when (not (eq? color white))
                                   (set! count (+ count 1))
                                   (set! sum-red (+ sum-red (irgb-red color)))
@@ -122,13 +122,12 @@
   (lambda (n inputImage)
     (letrec ([pointTrys 10]
 	     [minDistance (sqr 3)]
-	     [tesselatedImage (image-variant inputImage (lambda (aa) aa))] ; to avoid messing with the original
-;	     [finalImage (image-variant inputImage 
-;					(lambda (color) (hsv->irgb (hsv 
-;								     (+ (irgb->hue color) 
-;									(* (/ n 100) 360))
-;								     (irgb->saturation color)
-;								     (irgb->value color)))))]
+	     [finalImage (image-variant inputImage 
+					(lambda (color) (hsv->irgb (hsv 
+								     (+ (irgb->hue color) 
+									(* (/ n 100) 360))
+								     (irgb->saturation color)
+								     (irgb->value color)))))]
 	     [tesselatedReigon (let* ([sixthWidth (max 50 (floor (/ (image-width inputImage) 6)))]
 				      [sixthHeight (max 50 (floor (/ (image-height inputImage) 6)))]
 				      [x1 (random (- (image-width inputImage) sixthWidth))]
@@ -297,27 +296,36 @@
 		 (map (l-s + pos) (iota (- (vector-length connectionsMatrix) pos))))]
 	     [trianglesBottom
 	       (lambda (row findVal) 
-		 (filter (and (section connectionsMatrixPoint <> findVal);(lambda (num) (vector-ref (vector-ref connectionsMatrix num) findVal))
-			      (section < <> row))
-			 (vector->indexList (subConnectionsMatrix row) 0 null)))]
+		 (map (section list findVal row <>) 
+		      (filter (lambda (index) 
+				(and (connectionsMatrixPoint index findVal)
+				     (< row index)))
+			      (vector->indexList (subConnectionsMatrix row) 0 null))))]
 	     [trianglesMiddle 
-	       (lambda (row findVal)
-		 (apply append 
-			(map (compose (l-s cons row) (section trianglesBottom <> findVal)) 
-			     (filter (l-s < findVal) (vector->indexList (subConnectionsMatrix row) 0 null)))))]
-	     [trianglesTop 
 	       (lambda (row)
-		 (apply append ; remove a layer of list
-			(map (compose (l-s cons row) (section trianglesMiddle <> row))
-			     (filter (l-s < row) (vector->indexList (subConnectionsMatrix row) 0 null)))))]
+		 (apply append (map (compose (section trianglesBottom <> row) (section + row 1 <>)) (iota (- numPoints row 1)))))]
+
+	     ;drawing
+	     [drawTriangle!
+	       (lambda (triangle)
+		 (let ([points (map
+				 (lambda (index)
+				   (cons
+				     (+ (car (vector-ref randomPoints index)) (car tesselatedSize))
+				     (+ (cdr (vector-ref randomPoints index)) (cdr tesselatedSize)))) 
+				 triangle)])
+		 (context-set-bgcolor! (irgb 255 255 255))
+		 (context-set-fgcolor! (irgb 255 255 255))
+		 (image-select-polygon! inputImage REPLACE points)
+		 (context-set-fgcolor! (average-nwp (selection->image inputImage)))
+		 (image-select-polygon! finalImage REPLACE points)
+		 (image-fill-selection! finalImage)
 	     )
 
 	     ;initialize vector
 	     (setRandomPoints 0)
 	     (initializeConnectionsMatrix! (findConnections 0 null))
-	     (display connectionsMatrix)
-	     (newline)
-	     (display (map trianglesTop (iota numPoints)))
+	     (display (apply append (map trianglesMiddle (iota numPoints))))
 	     
 	     
 	     )))
