@@ -220,7 +220,7 @@
 		      (isPointRightOfLine segmentA (cdr segmentB))))]
 	      [segmentsIntersect? 
 		(lambda (pointAA pointAB pointBA pointBB)
-		  (and (boundingRectanglesIntersect? (pointAA pointAB pointBA pointBB))
+		  (and (boundingRectanglesIntersect? pointAA pointAB pointBA pointBB)
 		       (lineSegmentCrossesLine? (cons pointAA pointAB) (cons pointBA pointBB))
 		       (lineSegmentCrossesLine? (cons pointBA pointBB) (cons pointAA pointAB))))]
 
@@ -228,8 +228,8 @@
 				    (cond [(null? connectionsLeft) (display "true") #t]
 					  [(segmentsIntersect? point1 
 							       point2 
-							       (vector-ref (caar connectionsLeft)) 
-							       (vector-ref (cdar connectionsLeft)))
+							       (vector-ref randomPoints (caar connectionsLeft)) 
+							       (vector-ref randomPoints (cdar connectionsLeft)))
 					   #f]
 					  [else 
 					    (checkSegmentCrosses point1 point2 (cdr connectionsLeft))]))]
@@ -326,10 +326,17 @@
 	     (setRandomPoints 0)
 	     (display randomPoints)
 	     (newline)
-	     (context-set-fgcolor! "black")
-	     (context-set-brush! "2. Hardness 100" 2)
-	     (let ([connections (findConnections 0 null)])
-	       (map 
+	     (context-set-fgcolor! "white")
+	     (context-set-bgcolor! "white")
+	     (context-set-brush! "2. Hardness 100" 1)
+	     (let ([connections (findConnections 0 null)]
+		   [image (image-new (car tesselatedSize) (cdr tesselatedSize))])
+	       (context-set-fgcolor! "black")
+	       (map (lambda (num) (image-draw-line! image (car (vector-ref randomPoints (car num)))
+						    (cdr (vector-ref randomPoints (car num)))
+						    (car (vector-ref randomPoints (cdr num)))
+						    (cdr (vector-ref randomPoints (cdr num))))) connections)
+	       (image-show image))
 	     
 	     
 ;	     (initializeConnectionsMatrix! connections)
