@@ -316,7 +316,6 @@
 		 (context-set-bgcolor! (irgb 255 255 255))
 		 (context-set-fgcolor! (irgb 255 255 255))
 		 (image-select-polygon! inputImage REPLACE points)
-		 (display points)
 		 (context-set-fgcolor! (average-nwp (selection->image inputImage)))
 		 (image-select-polygon! finalImage REPLACE points)
 		 (image-fill-selection! finalImage)))]
@@ -324,13 +323,10 @@
 
 	     ;initialize vector
 	     (setRandomPoints 0)
-	     (display randomPoints)
-	     (newline)
 
 	     ;initalize array for triangle finding
 	     (initializeConnectionsMatrix! (findConnections 0 null))
 
-	     (display tesselatedSize)
 	     ;draw triangles
 	     (map drawTriangle! (apply append (map trianglesMiddle (iota numPoints))))
 
