@@ -333,20 +333,3 @@
 	     finalImage
 	     )))
 
-
-
-;;;;   
-;;;;   (define imageVector (make-vector (* (image-height image) (image-width image)) 0))
-;;;;   ; initialize 2d vector
-;;;;   ; ((lambda (pos) (if (= pos (image-height image)) 0 (vector-set! imageVector pos (make-vector (image-width image) 0)))) 0)
-;;;;   
-;;;;   ; fill with color values
-;;;;   ; (let ([pos 0])
-;;;;   ;   (image-variant 
-;;;;   ;     image 
-;;;;   ;     (lambda (color) (vector-set! pos color) (set! pos (+ pos 1) 0))))
-;;;;   
-;;;;   (define psudoRandomBytes "aa")
-;;;;   (define psudoRandomFactory (thunk 
-;;;;   			     (set! psudoRandomBytes (subbytes (sha256 psudoRandomBytes) 0 2)) 
-;;;;   			     (bytes-ref psudoRandomBytes 0)))
