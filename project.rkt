@@ -124,8 +124,8 @@
 	     [minDistance (sqr 3)]
 	     [finalImage (image-variant inputImage 
 					(lambda (color) (hsv->irgb (hsv 
-								     (+ (irgb->hue color) 
-									(* (/ n 100) 360))
+								     (modulo (round (+ (irgb->hue color) 
+										       (* (/ n 100) 360))) 360)
 								     (irgb->saturation color)
 								     (irgb->value color)))))]
 	     [tesselatedReigon (let* ([sixthWidth (max 50 (floor (/ (image-width inputImage) 6)))]
@@ -281,7 +281,6 @@
 	       (lambda (lst) 
 		 (cond [(null? lst) 0]
 		       [else 
-			 (display (car lst))
 			 (makePointTrueConnectionsMatrix! (caar lst) (cdar lst))
 			 (makePointTrueConnectionsMatrix! (cdar lst) (caar lst))
 			 (initializeConnectionsMatrix! (cdr lst))]))]
@@ -311,23 +310,31 @@
 		 (let ([points (map
 				 (lambda (index)
 				   (cons
-				     (+ (car (vector-ref randomPoints index)) (car tesselatedSize))
-				     (+ (cdr (vector-ref randomPoints index)) (cdr tesselatedSize)))) 
+				     (+ (car (vector-ref randomPoints index)) (caar tesselatedReigon))
+				     (+ (cdr (vector-ref randomPoints index)) (cdar tesselatedReigon)))) 
 				 triangle)])
 		 (context-set-bgcolor! (irgb 255 255 255))
 		 (context-set-fgcolor! (irgb 255 255 255))
 		 (image-select-polygon! inputImage REPLACE points)
+		 (display points)
 		 (context-set-fgcolor! (average-nwp (selection->image inputImage)))
 		 (image-select-polygon! finalImage REPLACE points)
-		 (image-fill-selection! finalImage)
+		 (image-fill-selection! finalImage)))]
 	     )
 
 	     ;initialize vector
 	     (setRandomPoints 0)
+	     (display randomPoints)
+	     (newline)
+
+	     ;initalize array for triangle finding
 	     (initializeConnectionsMatrix! (findConnections 0 null))
-	     (display (apply append (map trianglesMiddle (iota numPoints))))
-	     
-	     
+
+	     (display tesselatedSize)
+	     ;draw triangles
+	     (map drawTriangle! (apply append (map trianglesMiddle (iota numPoints))))
+
+	     finalImage
 	     )))
 
 
