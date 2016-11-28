@@ -196,9 +196,36 @@
 			(>= xA2 xB1)
 			(<= yA1 yB2)
 			(>= yA2 yB1))))]
-	     [segmentsIntersect? 
-	       (lambda (pointAA pointAB pointBA pointBB)
-		 (or 
+;we still want to draw it if it's on the line
+;	     [pointOnLine? 
+;	       (lambda (segment point)
+;		 (let* ([EPSILON 1]
+;			[aTmp (cons (cons 0 0) 
+;				    (cons (- (cadr segment) (caar segment)) (- (cddr segment) (cdar segment))))]
+;			[bTmp (cons 
+;				(- (car point) (caar segment))
+;				(- (cdr point) (cdar segment)))])
+;		   (< 
+	     [isPointRightOfLine 
+	       (lambda (segment point)
+		 (let* ([aTmp (cons (cons 0 0) 
+				    (cons (- (cadr segment) (caar segment)) (- (cddr segment) (cdar segment))))]
+			[bTmp (cons 
+				(- (car point) (caar segment))
+				(- (cdr point) (cdar segment)))])
+		   (< (cross-product (cdr aTmp) bTmp) 0)))]
+	     [lineSegmentCrossesLine? 
+	       (lambda (segmentA segmentB)
+		 (xor (isPointRightOfLine segmentA (car segmentB))
+		      (isPointRightOfLine segmentA (cdr segmentB))))]
+	      [segmentsIntersect? 
+		(lambda (pointAA pointAB pointBA pointBB)
+		  (and (boundingRectanglesIntersect? (pointAA pointAB pointBA pointBB))
+		       (lineSegmentCrossesLine? (cons pointAA pointAB) (cons pointBA pointBB))
+		       (lineSegmentCrossesLine? (cons pointBA pointBB) (cons pointAA pointAB))
+
+
+
 
 	     [checkSegmentCrosses (lambda (point1 point2 connectionsLeft) 
 				    (cond [(null? connectionsLeft) (display "true") #t]
