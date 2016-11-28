@@ -1,5 +1,6 @@
 #lang racket
 (require gigls/unsafe)
+(require racket/vector)
 
 ; citations:
 ; https://docs.racket-lang.org/reference/Filesystem.html
@@ -196,16 +197,16 @@
 			(>= xA2 xB1)
 			(<= yA1 yB2)
 			(>= yA2 yB1))))]
-;we still want to draw it if it's on the line
-;	     [pointOnLine? 
-;	       (lambda (segment point)
-;		 (let* ([EPSILON 1]
-;			[aTmp (cons (cons 0 0) 
-;				    (cons (- (cadr segment) (caar segment)) (- (cddr segment) (cdar segment))))]
-;			[bTmp (cons 
-;				(- (car point) (caar segment))
-;				(- (cdr point) (cdar segment)))])
-;		   (< 
+	     ;we still want to draw it if it's on the line
+	     ;	     [pointOnLine? 
+	     ;	       (lambda (segment point)
+	     ;		 (let* ([EPSILON 1]
+	     ;			[aTmp (cons (cons 0 0) 
+	     ;				    (cons (- (cadr segment) (caar segment)) (- (cddr segment) (cdar segment))))]
+	     ;			[bTmp (cons 
+	     ;				(- (car point) (caar segment))
+	     ;				(- (cdr point) (cdar segment)))])
+	     ;		   (< 
 	     [isPointRightOfLine 
 	       (lambda (segment point)
 		 (let* ([aTmp (cons (cons 0 0) 
@@ -218,14 +219,14 @@
 	       (lambda (segmentA segmentB)
 		 (xor (isPointRightOfLine segmentA (car segmentB))
 		      (isPointRightOfLine segmentA (cdr segmentB))))]
-	      [segmentsIntersect? 
-		(lambda (pointAA pointAB pointBA pointBB)
-		  (and (boundingRectanglesIntersect? pointAA pointAB pointBA pointBB)
-		       (lineSegmentCrossesLine? (cons pointAA pointAB) (cons pointBA pointBB))
-		       (lineSegmentCrossesLine? (cons pointBA pointBB) (cons pointAA pointAB))))]
+	     [segmentsIntersect? 
+	       (lambda (pointAA pointAB pointBA pointBB)
+		 (and (boundingRectanglesIntersect? pointAA pointAB pointBA pointBB)
+		      (lineSegmentCrossesLine? (cons pointAA pointAB) (cons pointBA pointBB))
+		      (lineSegmentCrossesLine? (cons pointBA pointBB) (cons pointAA pointAB))))]
 
 	     [checkSegmentCrosses (lambda (point1 point2 connectionsLeft) 
-				    (cond [(null? connectionsLeft) (display "true") #t]
+				    (cond [(null? connectionsLeft) #t]
 					  [(segmentsIntersect? point1 
 							       point2 
 							       (vector-ref randomPoints (caar connectionsLeft)) 
@@ -235,19 +236,6 @@
 					    (checkSegmentCrosses point1 point2 (cdr connectionsLeft))]))]
 	     [connectionsForPoint 
 	       (lambda (pointNum pos lstSoFar formerList)
-		 (display pointNum)
-		 (display " ")
-		 (display pos)
-		 (newline)
-		 (display (filter (lambda (point) ; dump segments that share an endpoint
-				    (let ([check (lambda (num) 
-						   (not (or (= num pos) (= num pointNum))))])
-				      (and (check (car point)) (check (cdr point)))))
-					  formerList))
-		 (newline)
-		 (display formerList)
-		 (newline)
-		 (newline)
 		 (cond [(= pos -1) lstSoFar]
 		       [(checkSegmentCrosses 
 			  (vector-ref randomPoints pos) 
@@ -280,13 +268,24 @@
 				  lstSoFar))]
 
 	     ;finding triangles
-	     [connectionsMatrix (make-vector numPoints (make-vector numPoints #f))]
+	     [connectionsMatrix (make-vector (* numPoints numPoints) #f)]
+	     [makePointTrueConnectionsMatrix!
+	       (lambda (col row)
+		 (vector-set! connectionsMatrix (+ (* row numPoints) col) #t))]
+	     [connectionsMatrixPoint
+	       (lambda (col row)
+		 (vector-ref connectionsMatrix (+ (* row numPoints) col)))]
+	     [subConnectionsMatrix
+	       (lambda (row)
+		 (vector-copy connectionsMatrix (* row numPoints) (* (+ row 1) numPoints)))]
 	     [initializeConnectionsMatrix! 
 	       (lambda (lst) 
 		 (cond [(null? lst) 0]
-		       [else (vector-set! (vector-ref connectionsMatrix (caar lst) (cdar lst)) #t)
-			     (vector-set! (vector-ref connectionsMatrix (cdar lst) (caar lst)) #t)
-			     (initializeConnectionsMatrix! (car lst))]))]
+		       [else 
+			 (display (car lst))
+			 (makePointTrueConnectionsMatrix! (caar lst) (cdar lst))
+			 (makePointTrueConnectionsMatrix! (cdar lst) (caar lst))
+			 (initializeConnectionsMatrix! (cdr lst))]))]
 	     [vector->indexList 
 	       (lambda (vec pos lstSoFar)
 		 (cond [(= (vector-length vec) pos) lstSoFar]
@@ -298,50 +297,29 @@
 		 (map (l-s + pos) (iota (- (vector-length connectionsMatrix) pos))))]
 	     [trianglesBottom
 	       (lambda (row findVal) 
-		 (filter (and (lambda (num) (vector-ref (vector-ref connectionsMatrix num) findVal))
-			      (l-s < row))
-			 (vector->indexList (vector-ref connectionsMatrix row) 0 null)))]
+		 (filter (and (section connectionsMatrixPoint <> findVal);(lambda (num) (vector-ref (vector-ref connectionsMatrix num) findVal))
+			      (section < <> row))
+			 (vector->indexList (subConnectionsMatrix row) 0 null)))]
 	     [trianglesMiddle 
 	       (lambda (row findVal)
 		 (apply append 
 			(map (compose (l-s cons row) (section trianglesBottom <> findVal)) 
-			     (filter (l-s < findVal) (vector->indexList (vector-ref connectionsMatrix row) 0 null)))))]
+			     (filter (l-s < findVal) (vector->indexList (subConnectionsMatrix row) 0 null)))))]
 	     [trianglesTop 
 	       (lambda (row)
 		 (apply append ; remove a layer of list
 			(map (compose (l-s cons row) (section trianglesMiddle <> row))
-			     (filter (l-s < row) (vector->indexList (vector-ref connectionsMatrix row) 0 null)))))]
+			     (filter (l-s < row) (vector->indexList (subConnectionsMatrix row) 0 null)))))]
 	     )
 
 	     ;initialize vector
-;	     (display (checkSegmentsDontIntersect (cons 0 0) (cons 1 1) (cons 1 0) (cons 0 1)))
-;	     (set! randomPoints (vector (cons 1 0) (cons 0 1) (cons 0 2))) 
-;	     (display (checkSegmentCrosses (cons 0 0) (cons 5 5) (list (cons 1 2))))
-;                    (display (checkSegmentsDontIntersect (cons 0 0) (cons 5 5) (vector-ref randomPoints (car (car (list (cons 2 1)))))
-;		     (vector-ref randomPoints (cdr (car (list (cons 2 1)))))))
-;		    (newline)
-;		    (display (checkSegmentsDontIntersect (cons 0 0) (cons 5 5) (cons 0 1) (cons 0 2)))
-	     (display tesselatedSize)
-	     (newline)
 	     (setRandomPoints 0)
-	     (display randomPoints)
+	     (initializeConnectionsMatrix! (findConnections 0 null))
+	     (display connectionsMatrix)
 	     (newline)
-	     (context-set-fgcolor! "white")
-	     (context-set-bgcolor! "white")
-	     (context-set-brush! "2. Hardness 100" 1)
-	     (let ([connections (findConnections 0 null)]
-		   [image (image-new (car tesselatedSize) (cdr tesselatedSize))])
-	       (context-set-fgcolor! "black")
-	       (map (lambda (num) (image-draw-line! image (car (vector-ref randomPoints (car num)))
-						    (cdr (vector-ref randomPoints (car num)))
-						    (car (vector-ref randomPoints (cdr num)))
-						    (cdr (vector-ref randomPoints (cdr num))))) connections)
-	       (image-show image))
+	     (display (map trianglesTop (iota numPoints)))
 	     
 	     
-;	     (initializeConnectionsMatrix! connections)
-	     (newline)
-;	     (display (apply append (map trianglesTop (iota numPoints))))
 	     )))
 
 
